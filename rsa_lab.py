@@ -14,9 +14,8 @@
    4. Exportação das chaves em formato PEM (ASN.1/DER + Base64)
    5. Quebra da chave privada por fatoração (ataque)
 
- Uso: python3 rsa_lab.py [bits|todos]
-      bits = 16, 32, 64, 128, 256, 512, 1024 (padrão: 16)
-      todos = executa 16, 32 e 512 bits sequencialmente
+ Uso: python3 rsa_lab.py [bits]
+     bits = 16, 32, 64, 128, 256, 512, 1024 (padrão: 16)
 
 =============================================================================
 
@@ -1078,12 +1077,12 @@ def main():
     """
     Ponto de entrada do laboratório.
 
-    Uso:
-      python3 rsa_lab.py         -> executa com 16 bits (padrão do lab)
-      python3 rsa_lab.py 16      -> chave de 16 bits (quebrável, didático)
-      python3 rsa_lab.py 32      -> chave de 32 bits (quebrável, mais realista)
-      python3 rsa_lab.py 512     -> chave de 512 bits (formato PEM real)
-      python3 rsa_lab.py todos   -> executa 16, 32 e 512 bits sequencialmente
+        Uso:
+            python3 rsa_lab.py         -> executa com 16 bits (padrão do lab)
+            python3 rsa_lab.py 16      -> chave de 16 bits (quebrável, didático)
+            python3 rsa_lab.py 32      -> chave de 32 bits (quebrável, mais realista)
+            python3 rsa_lab.py 64      -> chave de 64 bits (quebrável, segundos|minutos)
+            python3 rsa_lab.py 512     -> chave de 512 bits (formato PEM real)
     """
     print("""
 ╔══════════════════════════════════════════════════════════════╗
@@ -1108,32 +1107,17 @@ def main():
     else:
         arg = "16"
 
-    if arg == "todos":
-        print("  Executando demonstração completa: 16, 32 e 512 bits\n")
-        print("  Isso permite comparar chaves pequenas (quebráveis)")
-        print("  com chaves maiores (formato realista).")
-
-        # 16 bits - padrão do professor, quebrável
-        run_lab(8)  # 8 bits por primo = chave de ~16 bits
-
-        # 32 bits - um pouco maior, ainda quebrável
-        run_lab(16)  # 16 bits por primo = chave de ~32 bits
-
-        # 512 bits - formato realista com PEM
-        run_lab(256)  # 256 bits por primo = chave de ~512 bits
-
-    else:
-        try:
-            total_bits = int(arg)
-            if total_bits < 8:
-                print("  [!] Mínimo: 8 bits")
-                total_bits = 8
-            prime_bits = total_bits // 2
-            run_lab(prime_bits)
-        except ValueError:
-            print(f"  [!] Argumento inválido: '{arg}'")
-            print(f"  Uso: python3 rsa_lab.py [8|16|32|64|128|256|512|1024|todos]")
-            sys.exit(1)
+    try:
+        total_bits = int(arg)
+        if total_bits < 8:
+            print("  [!] Mínimo: 8 bits")
+            total_bits = 8
+        prime_bits = total_bits // 2
+        run_lab(prime_bits)
+    except ValueError:
+        print(f"  [!] Argumento inválido: '{arg}'")
+        print(f"  Uso: python3 rsa_lab.py [8|16|32|64|128|256|512|1024]")
+        sys.exit(1)
 
     # Resumo final
     print(f"\n{'#'*60}")

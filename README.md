@@ -29,9 +29,6 @@ python3 rsa_lab.py 16     # Chave de 16 bits (quebrável, didático)
 python3 rsa_lab.py 32     # Chave de 32 bits (quebrável)
 python3 rsa_lab.py 512    # Chave de 512 bits (formato PEM realista)
 python3 rsa_lab.py 1024   # Chave de 1024 bits
-
-# Executa todos os tamanhos (16, 32 e 512 bits)
-python3 rsa_lab.py todos
 ```
 
 ---
@@ -225,7 +222,7 @@ O script não usa nenhuma biblioteca externa de criptografia. Tudo é implementa
 | **Chave Pública (e, n)**     | Par de números que qualquer pessoa pode ter, usado para criptografar |
 | **Chave Privada (d, n)**     | Par de números secreto do dono, usado para descriptografar           |
 | **Módulo (n)**               | Produto dos dois primos: n = p \* q                                  |
-| **Totiente de Euler phi(n)** | Quantidade de números coprimos com n: phi(n) = (p-1)(q-1)           |
+| **Totiente de Euler phi(n)** | Quantidade de números coprimos com n: phi(n) = (p-1)(q-1)            |
 | **Expoente Público (e)**     | Geralmente 65537, usado na criptografia                              |
 | **Expoente Privado (d)**     | Inverso modular de e, usado na descriptografia                       |
 | **MDC**                      | Máximo Divisor Comum                                                 |
