@@ -1,1 +1,6 @@
 next_steps.md
+
+__pycache__/
+*.py[cod]
+
+keys/

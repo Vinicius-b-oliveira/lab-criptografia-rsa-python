@@ -6,6 +6,7 @@ Implementação do algoritmo RSA do zero, sem bibliotecas externas de criptograf
 
 - [O que é RSA?](#o-que-é-rsa)
 - [Como executar](#como-executar)
+- [Execução individual por etapa (CLIs)](#execução-individual-por-etapa-clis)
 - [Mapa do rsa_lab.py (funções, etapas e fluxos)](#mapa-do-rsa_labpy-funções-etapas-e-fluxos)
 - [Legenda das saídas do terminal](#legenda-das-saídas-do-terminal)
 - [Por que a chave privada tem 5 valores?](#por-que-a-chave-privada-tem-5-valores)
@@ -44,6 +45,51 @@ python3 rsa_lab.py 64     # Chave de 64 bits (a quebra pode levar minutos)
 python3 rsa_lab.py 512    # Chave de 512 bits (formato PEM realista)
 python3 rsa_lab.py 1024   # Chave de 1024 bits
 ```
+
+## Execução individual por etapa (CLIs)
+
+Além do fluxo completo em [rsa_lab.py](rsa_lab.py), também é possível executar etapas de forma separada:
+
+```bash
+# 1) Gerar chaves (tupla + PEM)
+python3 rsa_keygen.py 64
+
+# 1b) Gerar e salvar PEM em arquivo (diretorio local)
+python3 rsa_keygen.py 64 --output file
+
+# 1c) Gerar e mostrar no terminal + salvar em arquivo
+python3 rsa_keygen.py 64 --output both
+
+# 2) Criptografar com chave pública
+python3 rsa_encrypt.py '(65537, 123456789)' 'mensagem'
+
+# 3) Descriptografar com chave privada
+python3 rsa_decrypt.py '(12345, 123456789)' '987654321'
+
+# 4) Quebrar chave pública (didático)
+python3 rsa_break.py '(65537, 123456789)'
+
+# Também aceita PEM por arquivo
+python3 rsa_encrypt.py public.pem 'mensagem'
+python3 rsa_decrypt.py private.pem '987654321'
+python3 rsa_break.py public.pem
+```
+
+Observação: os CLIs aceitam chave em tupla, PEM literal (texto) ou caminho para arquivo `.pem`.
+
+Para o `rsa_keygen.py`:
+
+- `--output terminal` (padrão): imprime PEM no terminal.
+- `--output file`: salva PEM em arquivos na pasta `keys/` (ou em `--out-dir`).
+- `--output both`: imprime no terminal e também salva em arquivo.
+
+Arquivos da versão modular:
+
+- [rsa_core.py](rsa_core.py): funções compartilhadas (matemática, RSA, PEM e fatoração).
+- [rsa_keygen.py](rsa_keygen.py): geração de chaves.
+- [rsa_encrypt.py](rsa_encrypt.py): criptografia.
+- [rsa_decrypt.py](rsa_decrypt.py): descriptografia.
+- [rsa_break.py](rsa_break.py): ataque por fatoração.
 
 ---
 
