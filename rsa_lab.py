@@ -269,7 +269,9 @@ def factorize(n):
 
     limit = math.isqrt(n) + 1
     attempts = 0
-    for i in range(3, limit, 2):
+    if limit % 2 == 0:
+        limit -= 1
+    for i in range(limit, 3, -2):
         attempts += 1
         if n % i == 0:
             return i, n // i, attempts
