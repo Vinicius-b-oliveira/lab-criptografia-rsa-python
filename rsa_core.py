@@ -117,6 +117,42 @@ def int_to_text(number):
     return data.decode("utf-8")
 
 
+def block_size(public_key):
+    _, n = public_key
+    return max(1, (n.bit_length() - 1) // 8)
+
+
+def encrypt_text(text, public_key):
+    e, n = public_key
+    size = block_size(public_key)
+    data = text.encode("utf-8")
+
+    blocks = []
+    for i in range(0, len(data), size):
+        chunk = data[i : i + size]
+        msg_int = int.from_bytes(chunk, byteorder="big")
+        blocks.append(pow(msg_int, e, n))
+
+    return blocks
+
+
+def decrypt_text(blocks, private_key):
+    d, n = private_key[0], private_key[1]
+    size = max(1, (n.bit_length() - 1) // 8)
+
+    parts = []
+    for i, cipher_block in enumerate(blocks):
+        recovered_int = pow(cipher_block, d, n)
+        if i < len(blocks) - 1:
+            part = recovered_int.to_bytes(size, byteorder="big")
+        else:
+            byte_len = max(1, (recovered_int.bit_length() + 7) // 8)
+            part = recovered_int.to_bytes(byte_len, byteorder="big")
+        parts.append(part)
+
+    return b"".join(parts).decode("utf-8")
+
+
 def encode_der_length(length):
     if length < 0x80:
         return bytes([length])

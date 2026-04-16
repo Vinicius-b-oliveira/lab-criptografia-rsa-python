@@ -109,10 +109,8 @@ main
                           -> mod_inverse
                                   -> extended_gcd
           -> demo_encryption
-                  -> text_to_int
-                  -> encrypt
-                  -> decrypt
-                  -> int_to_text
+                  -> text_to_int / encrypt / decrypt / int_to_text  (1 bloco)
+                  -> encrypt_text / decrypt_text                    (N blocos)
           -> demo_pem_format
                   -> public_key_to_pem
                           -> int_to_der
@@ -142,10 +140,13 @@ main
 | `is_prime_miller_rabin`   | `rsa_core.py` | Testa primalidade dos candidatos             | Base matemática                     |
 | `generate_prime`          | `rsa_core.py` | Gera primos aleatórios de N bits             | Geração de chaves                   |
 | `generate_keys`           | `rsa_core.py` | Gera `(e, n)` e `(d, n, p, q, e)`            | Etapa 1                             |
-| `encrypt`                 | `rsa_core.py` | Executa `message^e mod n`                    | Etapa 2                             |
-| `decrypt`                 | `rsa_core.py` | Executa `ciphertext^d mod n`                 | Etapa 2                             |
+| `encrypt`                 | `rsa_core.py` | Executa `message^e mod n`                    | Etapa 2 (primitiva)                 |
+| `decrypt`                 | `rsa_core.py` | Executa `ciphertext^d mod n`                 | Etapa 2 (primitiva)                 |
 | `text_to_int`             | `rsa_core.py` | Converte texto para inteiro                  | Etapa 2                             |
 | `int_to_text`             | `rsa_core.py` | Converte inteiro para texto                  | Etapa 2                             |
+| `block_size`              | `rsa_core.py` | Calcula bytes por bloco para uma chave       | Etapa 2 (blocos)                    |
+| `encrypt_text`            | `rsa_core.py` | Divide texto em blocos e encripta cada um    | Etapa 2 (blocos)                    |
+| `decrypt_text`            | `rsa_core.py` | Decifra blocos e remonta o texto             | Etapa 2 (blocos)                    |
 | `encode_der_length`       | `rsa_core.py` | Codifica campo Length no DER                 | Etapa 3 (escrita PEM)               |
 | `int_to_der`              | `rsa_core.py` | Codifica INTEGER em DER                      | Etapa 3 (escrita PEM)               |
 | `der_sequence`            | `rsa_core.py` | Empacota conteúdo como SEQUENCE DER          | Etapa 3 (escrita PEM)               |
@@ -183,10 +184,18 @@ main
 
 **Etapa 2 (Criptografia/Descriptografia)**
 
-1. `demo_encryption` converte mensagem com `text_to_int`.
+Etapa 2a (1 bloco — criptografia clássica):
+1. `demo_encryption` converte mensagem curta com `text_to_int`.
 2. Chama `encrypt` com chave pública.
 3. Chama `decrypt` com chave privada.
 4. Reconverte com `int_to_text` e compara resultado.
+
+Etapa 2b (N blocos — mensagem maior que `n`):
+1. `demo_encryption` chama `encrypt_text` com mensagem longa.
+2. `encrypt_text` divide o texto em blocos de `block_size` bytes.
+3. Cada bloco é convertido para inteiro e encriptado individualmente.
+4. `decrypt_text` decifra cada bloco e concatena os bytes de volta.
+5. Compara o texto recuperado com o original.
 
 **Etapa 3 (PEM/DER)**
 
@@ -236,12 +245,22 @@ Esta seção explica, campo por campo, o que aparece ao rodar `python3 rsa_lab.p
 - `chave privada tupla`: representação didática completa `(d, n, p, q, e)`.
 - `p e q`: mostrado apenas para tamanhos muito pequenos.
 
-### [ETAPA 2] Criptografia e descriptografia
+### [ETAPA 2a] Criptografia clássica (1 bloco)
 
-- `mensagem`: texto usado na demonstração.
+- `mensagem`: texto curto usado na demonstração (cabe em 1 bloco).
 - `inteiro`: mensagem convertida para inteiro (UTF-8 big-endian).
 - `cifrado`: resultado de `message^e mod n`.
 - `recuperado`: resultado após `ciphertext^d mod n` convertido de volta para texto.
+- `status`: validação de igualdade entre original e recuperado.
+
+### [ETAPA 2b] Criptografia por blocos (mensagem maior que n)
+
+- `mensagem`: texto longo que não cabe em um único bloco.
+- `bytes da mensagem`: tamanho total da mensagem em bytes UTF-8.
+- `tamanho do bloco`: quantos bytes cabem em cada bloco (calculado a partir de `n`).
+- `blocos cifrados`: quantidade de blocos gerados.
+- `bloco N`: valor cifrado de cada bloco individual.
+- `recuperado`: texto remontado após decifrar todos os blocos.
 - `status`: validação de igualdade entre original e recuperado.
 
 ### [ETAPA 3] Exportacao PEM
@@ -439,16 +458,38 @@ Como RSA opera sobre inteiros, o lab converte texto em bytes UTF-8 e depois em i
 
 Na volta, faz o processo inverso: inteiro -> bytes -> string UTF-8.
 
-#### Limitação importante
+#### Encriptação por blocos (mensagens maiores que `n`)
 
-O valor numérico da mensagem deve ser menor que `n`. Quando não cabe, há truncamento didático no exemplo.
+O RSA só encripta um inteiro menor que `n` por vez. Para mensagens maiores, o lab divide o texto em **blocos**:
 
-No mundo real, usa-se criptografia híbrida:
+```text
+"Mensagem grande demais"        (22 bytes)
+        │
+        ▼
+Texto em bytes UTF-8            [4d 65 6e 73 61 67 65 6d ...]
+        │
+        ▼
+Divide em blocos de B bytes     B = (bits de n - 1) / 8
+        │                       (garante que cada bloco < n)
+        ▼
+Bloco 1: [4d 65 6e 73 61 67 65]  → inteiro → encrypt → cifrado₁
+Bloco 2: [6d 20 67 72 61 6e 64]  → inteiro → encrypt → cifrado₂
+Bloco 3: [65 20 64 65 6d 61 69]  → inteiro → encrypt → cifrado₃
+Bloco 4: [73]                     → inteiro → encrypt → cifrado₄
+        │
+        ▼
+Saída: cifrado₁, cifrado₂, cifrado₃, cifrado₄
+```
 
-1. RSA cifra uma chave simétrica curta.
-2. AES/ChaCha20 cifra os dados grandes.
+Na descriptografia, cada bloco cifrado é decifrado individualmente e os bytes são concatenados de volta.
 
-Isso evita limitações de tamanho e melhora desempenho.
+| Função          | Papel                                        |
+| --------------- | -------------------------------------------- |
+| `block_size`    | Calcula quantos bytes cabem em um bloco      |
+| `encrypt_text`  | Divide texto em blocos e encripta cada um    |
+| `decrypt_text`  | Decifra cada bloco e remonta o texto         |
+
+As funções primitivas `encrypt` e `decrypt` continuam operando sobre um único inteiro — as funções de bloco usam elas internamente.
 
 ### 4. Formato PEM (ASN.1/DER + Base64)
 

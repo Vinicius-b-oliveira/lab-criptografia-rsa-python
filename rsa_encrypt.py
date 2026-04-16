@@ -3,7 +3,7 @@
 
 import sys
 
-from rsa_core import encrypt, parse_public_key_input, text_to_int
+from rsa_core import block_size, encrypt_text, parse_public_key_input
 
 
 def main():
@@ -16,17 +16,19 @@ def main():
 
     try:
         public_key = parse_public_key_input(key_text)
-        message_int = text_to_int(message)
-        ciphertext = encrypt(message_int, public_key)
+        blocks = encrypt_text(message, public_key)
     except Exception as exc:
         print(f"[!] Erro: {exc}")
         print("    Uso: python3 rsa_encrypt.py '<(e, n)|PEM|arquivo.pem>' 'mensagem'")
         sys.exit(1)
 
+    serialized = ",".join(str(b) for b in blocks)
+
     print("[ENCRYPT] Resultado")
     print(f"  mensagem ............: {message}")
-    print(f"  inteiro .............: {message_int}")
-    print(f"  cifrado .............: {ciphertext}")
+    print(f"  tamanho do bloco ....: {block_size(public_key)} bytes")
+    print(f"  blocos cifrados .....: {len(blocks)}")
+    print(f"  cifrado .............: {serialized}")
 
 
 if __name__ == "__main__":
