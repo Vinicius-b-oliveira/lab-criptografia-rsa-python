@@ -6,8 +6,9 @@ Implementação do algoritmo RSA do zero, sem bibliotecas externas de criptograf
 
 - [O que é RSA?](#o-que-é-rsa)
 - [Como executar](#como-executar)
+- [CLI interativa](#cli-interativa)
 - [Execução individual por etapa (CLIs)](#execução-individual-por-etapa-clis)
-- [Mapa do rsa_lab.py (funções, etapas e fluxos)](#mapa-do-rsa_labpy-funções-etapas-e-fluxos)
+- [Mapa do código (funções, etapas e fluxos)](#mapa-do-código-funções-etapas-e-fluxos)
 - [Legenda das saídas do terminal](#legenda-das-saídas-do-terminal)
 - [Por que a chave privada tem 5 valores?](#por-que-a-chave-privada-tem-5-valores)
 - [Etapas do laboratório](#etapas-do-laboratório)
@@ -32,8 +33,13 @@ A segurança do RSA se baseia em um fato matemático:
 ## Como executar
 
 ```bash
-# Dependências: nenhuma! Usa apenas a biblioteca padrão do Python 3.
-# Não precisa de venv.
+# O lab e os CLIs usam apenas a biblioteca padrão do Python 3.
+# A CLI interativa (rsa_cli.py) precisa de venv com simple-term-menu.
+
+# Setup do venv (necessário apenas para rsa_cli.py)
+python3 -m venv .venv
+source .venv/bin/activate     # Linux/Mac
+pip install -r requirements.txt
 
 # Executa com 16 bits (padrão do lab)
 python3 rsa_lab.py
@@ -45,6 +51,46 @@ python3 rsa_lab.py 64     # Chave de 64 bits (a quebra pode levar minutos)
 python3 rsa_lab.py 512    # Chave de 512 bits (formato PEM realista)
 python3 rsa_lab.py 1024   # Chave de 1024 bits
 ```
+
+## CLI interativa
+
+Interface com menus de seleção (requer venv ativado):
+
+```bash
+source .venv/bin/activate
+python3 rsa_cli.py
+```
+
+```text
+========================================
+  RSA Lab - CLI Interativa
+========================================
+
+  O que deseja fazer?
+> Gerar chaves
+  Encriptar mensagem
+  Decriptar mensagem
+  Quebrar chave (fatoracao)
+  Exibir PEM
+  Status da sessao
+  Sair
+```
+
+Use as setas (cima/baixo) para navegar e Enter para selecionar. As chaves geradas ficam em memória durante a sessão.
+
+| Opção do menu             | Ação                                                        |
+| ------------------------- | ----------------------------------------------------------- |
+| Gerar chaves              | Escolhe tamanho (16-2048 bits) e gera par de chaves         |
+| Encriptar mensagem        | Pede texto e formato (didático ou raw Base64)               |
+| Decriptar mensagem        | Decripta último cifrado da sessão ou entrada manual         |
+| Quebrar chave (fatoração) | Tenta fatorar a chave pública (com aviso para chaves grandes)|
+| Exibir PEM                | Mostra chaves pública e privada em formato PEM              |
+| Status da sessão          | Resumo da chave ativa e último cifrado                      |
+| Sair                      | Encerra a CLI                                               |
+
+A CLI interativa depende de `simple-term-menu` (instalado via `requirements.txt`). Os demais scripts funcionam sem dependências externas.
+
+---
 
 ## Execução individual por etapa (CLIs)
 
@@ -63,8 +109,14 @@ python3 rsa_keygen.py 64 --output both
 # 2) Criptografar com chave pública
 python3 rsa_encrypt.py '(65537, 123456789)' 'mensagem'
 
+# 2b) Criptografar em formato realista (Base64 binário)
+python3 rsa_encrypt.py --raw '(65537, 123456789)' 'mensagem longa'
+
 # 3) Descriptografar com chave privada
 python3 rsa_decrypt.py '(12345, 123456789)' '987654321'
+
+# 3b) Descriptografar a partir do formato raw
+python3 rsa_decrypt.py --raw private.pem 'PKsir4p7TEL...'
 
 # 4) Quebrar chave pública (didático)
 python3 rsa_break.py '(65537, 123456789)'
@@ -76,6 +128,11 @@ python3 rsa_break.py public.pem
 ```
 
 Observação: os CLIs aceitam chave em tupla, PEM literal (texto) ou caminho para arquivo `.pem`.
+
+Para o `rsa_encrypt.py` e `rsa_decrypt.py`:
+
+- Sem flag: saída/entrada didática (inteiros separados por vírgula).
+- `--raw`: saída/entrada realista (blocos binários de tamanho fixo concatenados e codificados em Base64). Visualmente se parece com dados criptografados reais.
 
 Para o `rsa_keygen.py`:
 
@@ -93,25 +150,24 @@ Arquivos da versão modular:
 
 ---
 
-## Mapa do rsa_lab.py (funções, etapas e fluxos)
+## Mapa do código (funções, etapas e fluxos)
 
-Esta seção conecta diretamente o README ao arquivo [rsa_lab.py](rsa_lab.py), para facilitar estudo, revisão e apresentação.
+Esta seção conecta diretamente o README ao código-fonte, para facilitar estudo. As funções de negócio ficam em [rsa_core.py](rsa_core.py), e a orquestração didática em [rsa_lab.py](rsa_lab.py).
 
 ### Fluxo principal (visão de chamada)
 
 ```text
 main
   -> run_lab
-          -> generate_keys
-                  -> generate_prime
-                          -> is_prime_miller_rabin
-                  -> mod_inverse
-                          -> extended_gcd
+          -> demo_generate_keys
+                  -> generate_keys
+                          -> generate_prime
+                                  -> is_prime_miller_rabin
+                          -> mod_inverse
+                                  -> extended_gcd
           -> demo_encryption
-                  -> text_to_int
-                  -> encrypt
-                  -> decrypt
-                  -> int_to_text
+                  -> text_to_int / encrypt / decrypt / int_to_text  (1 bloco)
+                  -> encrypt_text / decrypt_text                    (N blocos)
           -> demo_pem_format
                   -> public_key_to_pem
                           -> int_to_der
@@ -133,30 +189,49 @@ main
 
 ### Mapa de funções por responsabilidade
 
-| Função                  | Papel no código                              | Etapa do lab                        |
-| ----------------------- | -------------------------------------------- | ----------------------------------- |
-| `gcd`                   | Calcula máximo divisor comum                 | Base matemática                     |
-| `extended_gcd`          | Resolve combinação linear de Bézout          | Base matemática                     |
-| `mod_inverse`           | Calcula inverso modular                      | Base matemática / Geração de chaves |
-| `is_prime_miller_rabin` | Testa primalidade dos candidatos             | Base matemática                     |
-| `generate_prime`        | Gera primos aleatórios de N bits             | Geração de chaves                   |
-| `generate_keys`         | Gera `(e, n)` e `(d, n, p, q, e)`            | Etapa 1                             |
-| `encrypt`               | Executa `message^e mod n`                    | Etapa 2                             |
-| `decrypt`               | Executa `ciphertext^d mod n`                 | Etapa 2                             |
-| `text_to_int`           | Converte texto para inteiro                  | Etapa 2                             |
-| `int_to_text`           | Converte inteiro para texto                  | Etapa 2                             |
-| `demo_encryption`       | Demonstra ciclo completo de cifra/decifra    | Etapa 2                             |
-| `encode_der_length`     | Codifica campo Length no DER                 | Etapa 3                             |
-| `int_to_der`            | Codifica INTEGER em DER                      | Etapa 3                             |
-| `der_sequence`          | Empacota conteúdo como SEQUENCE DER          | Etapa 3                             |
-| `private_key_to_pem`    | Monta chave privada PEM (PKCS#1)             | Etapa 3                             |
-| `public_key_to_pem`     | Monta chave pública PEM (PKCS#1)             | Etapa 3                             |
-| `demo_pem_format`       | Mostra resumo da exportação PEM              | Etapa 3                             |
-| `factorize`             | Fatoração por divisão por tentativa          | Etapa 4                             |
-| `break_key`             | Reconstrói chave privada a partir da pública | Etapa 4                             |
-| `demo_full_attack`      | Simula interceptação + quebra + leitura      | Etapa 4                             |
-| `run_lab`               | Orquestra as etapas didáticas                | Orquestração                        |
-| `main`                  | Processa argumentos e inicia o fluxo         | Entrada do programa                 |
+| Função                    | Arquivo       | Papel no código                              | Etapa / Categoria                   |
+| ------------------------- | ------------- | -------------------------------------------- | ----------------------------------- |
+| `gcd`                     | `rsa_core.py` | Calcula máximo divisor comum                 | Base matemática                     |
+| `extended_gcd`            | `rsa_core.py` | Resolve combinação linear de Bézout          | Base matemática                     |
+| `mod_inverse`             | `rsa_core.py` | Calcula inverso modular                      | Base matemática / Geração de chaves |
+| `is_prime_miller_rabin`   | `rsa_core.py` | Testa primalidade dos candidatos             | Base matemática                     |
+| `generate_prime`          | `rsa_core.py` | Gera primos aleatórios de N bits             | Geração de chaves                   |
+| `generate_keys`           | `rsa_core.py` | Gera `(e, n)` e `(d, n, p, q, e)`            | Etapa 1                             |
+| `encrypt`                 | `rsa_core.py` | Executa `message^e mod n`                    | Etapa 2 (primitiva)                 |
+| `decrypt`                 | `rsa_core.py` | Executa `ciphertext^d mod n`                 | Etapa 2 (primitiva)                 |
+| `text_to_int`             | `rsa_core.py` | Converte texto para inteiro                  | Etapa 2                             |
+| `int_to_text`             | `rsa_core.py` | Converte inteiro para texto                  | Etapa 2                             |
+| `block_size`              | `rsa_core.py` | Calcula bytes por bloco para uma chave       | Etapa 2 (blocos)                    |
+| `encrypt_text`            | `rsa_core.py` | Divide texto em blocos e encripta cada um    | Etapa 2 (blocos)                    |
+| `decrypt_text`            | `rsa_core.py` | Decifra blocos e remonta o texto             | Etapa 2 (blocos)                    |
+| `cipher_block_size`       | `rsa_core.py` | Tamanho fixo do bloco cifrado (bytes de `n`) | Etapa 2 (serialização raw)          |
+| `blocks_to_raw`           | `rsa_core.py` | Serializa blocos cifrados em Base64 binário  | Etapa 2 (serialização raw)          |
+| `raw_to_blocks`           | `rsa_core.py` | Deserializa Base64 de volta para blocos      | Etapa 2 (serialização raw)          |
+| `encode_der_length`       | `rsa_core.py` | Codifica campo Length no DER                 | Etapa 3 (escrita PEM)               |
+| `int_to_der`              | `rsa_core.py` | Codifica INTEGER em DER                      | Etapa 3 (escrita PEM)               |
+| `der_sequence`            | `rsa_core.py` | Empacota conteúdo como SEQUENCE DER          | Etapa 3 (escrita PEM)               |
+| `public_key_to_pem`       | `rsa_core.py` | Monta chave pública PEM (PKCS#1)             | Etapa 3 (escrita PEM)               |
+| `private_key_to_pem`      | `rsa_core.py` | Monta chave privada PEM (PKCS#1)             | Etapa 3 (escrita PEM)               |
+| `_read_der_length`        | `rsa_core.py` | Lê campo Length de um bloco DER              | Etapa 3 (leitura PEM)               |
+| `_read_der_integer`       | `rsa_core.py` | Lê campo INTEGER de um bloco DER             | Etapa 3 (leitura PEM)               |
+| `_read_der_sequence`      | `rsa_core.py` | Lê SEQUENCE inteira e extrai INTEGERs        | Etapa 3 (leitura PEM)               |
+| `_extract_pem_content`    | `rsa_core.py` | Extrai bytes Base64 de um bloco PEM          | Etapa 3 (leitura PEM)               |
+| `parse_public_key_pem`    | `rsa_core.py` | Deserializa chave pública de PEM             | Etapa 3 (leitura PEM)               |
+| `parse_private_key_pem`   | `rsa_core.py` | Deserializa chave privada de PEM             | Etapa 3 (leitura PEM)               |
+| `factorize`               | `rsa_core.py` | Fatoração por divisão por tentativa          | Etapa 4                             |
+| `break_key`               | `rsa_core.py` | Reconstrói chave privada a partir da pública | Etapa 4                             |
+| `parse_key_tuple`         | `rsa_core.py` | Converte texto em tupla Python               | Parsing de entrada (CLIs)           |
+| `parse_public_key`        | `rsa_core.py` | Valida tupla como chave pública `(e, n)`     | Parsing de entrada (CLIs)           |
+| `parse_private_key`       | `rsa_core.py` | Valida tupla como chave privada              | Parsing de entrada (CLIs)           |
+| `resolve_key_input`       | `rsa_core.py` | Decide se input é arquivo ou texto literal   | Parsing de entrada (CLIs)           |
+| `parse_public_key_input`  | `rsa_core.py` | Ponto de entrada: parsing de chave pública   | Parsing de entrada (CLIs)           |
+| `parse_private_key_input` | `rsa_core.py` | Ponto de entrada: parsing de chave privada   | Parsing de entrada (CLIs)           |
+| `demo_generate_keys`      | `rsa_lab.py`  | Exibe geração de chaves                      | Etapa 1 (orquestração)              |
+| `demo_encryption`         | `rsa_lab.py`  | Demonstra ciclo completo de cifra/decifra    | Etapa 2 (orquestração)              |
+| `demo_pem_format`         | `rsa_lab.py`  | Mostra resumo da exportação PEM              | Etapa 3 (orquestração)              |
+| `demo_full_attack`        | `rsa_lab.py`  | Simula interceptação + quebra + leitura      | Etapa 4 (orquestração)              |
+| `run_lab`                 | `rsa_lab.py`  | Orquestra as etapas didáticas                | Orquestração                        |
+| `main`                    | `rsa_lab.py`  | Processa argumentos e inicia o fluxo         | Entrada do programa                 |
 
 ### Fluxos por etapa
 
@@ -169,17 +244,34 @@ main
 
 **Etapa 2 (Criptografia/Descriptografia)**
 
-1. `demo_encryption` converte mensagem com `text_to_int`.
+Etapa 2a (1 bloco — criptografia clássica):
+1. `demo_encryption` converte mensagem curta com `text_to_int`.
 2. Chama `encrypt` com chave pública.
 3. Chama `decrypt` com chave privada.
 4. Reconverte com `int_to_text` e compara resultado.
 
+Etapa 2b (N blocos — mensagem maior que `n`):
+1. `demo_encryption` chama `encrypt_text` com mensagem longa.
+2. `encrypt_text` divide o texto em blocos de `block_size` bytes.
+3. Cada bloco é convertido para inteiro e encriptado individualmente.
+4. `decrypt_text` decifra cada bloco e concatena os bytes de volta.
+5. Compara o texto recuperado com o original.
+
 **Etapa 3 (PEM/DER)**
+
+Escrita (tupla → PEM):
 
 1. `demo_pem_format` chama `public_key_to_pem` e `private_key_to_pem`.
 2. Ambas usam `int_to_der` e `der_sequence`.
 3. `int_to_der` usa `encode_der_length`.
 4. Saída final é Base64 com cabeçalhos PEM.
+
+Leitura (PEM → tupla), usada pelos CLIs:
+
+1. `parse_public_key_input` / `parse_private_key_input` detecta se input é PEM ou tupla.
+2. Se PEM: `_extract_pem_content` extrai o Base64 e decodifica para bytes DER.
+3. `_read_der_sequence` percorre os blocos TLV extraindo cada INTEGER.
+4. `parse_public_key_pem` / `parse_private_key_pem` monta a tupla final.
 
 **Etapa 4 (Ataque por fatoração)**
 
@@ -213,12 +305,22 @@ Esta seção explica, campo por campo, o que aparece ao rodar `python3 rsa_lab.p
 - `chave privada tupla`: representação didática completa `(d, n, p, q, e)`.
 - `p e q`: mostrado apenas para tamanhos muito pequenos.
 
-### [ETAPA 2] Criptografia e descriptografia
+### [ETAPA 2a] Criptografia clássica (1 bloco)
 
-- `mensagem`: texto usado na demonstração.
+- `mensagem`: texto curto usado na demonstração (cabe em 1 bloco).
 - `inteiro`: mensagem convertida para inteiro (UTF-8 big-endian).
 - `cifrado`: resultado de `message^e mod n`.
 - `recuperado`: resultado após `ciphertext^d mod n` convertido de volta para texto.
+- `status`: validação de igualdade entre original e recuperado.
+
+### [ETAPA 2b] Criptografia por blocos (mensagem maior que n)
+
+- `mensagem`: texto longo que não cabe em um único bloco.
+- `bytes da mensagem`: tamanho total da mensagem em bytes UTF-8.
+- `tamanho do bloco`: quantos bytes cabem em cada bloco (calculado a partir de `n`).
+- `blocos cifrados`: quantidade de blocos gerados.
+- `bloco N`: valor cifrado de cada bloco individual.
+- `recuperado`: texto remontado após decifrar todos os blocos.
 - `status`: validação de igualdade entre original e recuperado.
 
 ### [ETAPA 3] Exportacao PEM
@@ -416,16 +518,38 @@ Como RSA opera sobre inteiros, o lab converte texto em bytes UTF-8 e depois em i
 
 Na volta, faz o processo inverso: inteiro -> bytes -> string UTF-8.
 
-#### Limitação importante
+#### Encriptação por blocos (mensagens maiores que `n`)
 
-O valor numérico da mensagem deve ser menor que `n`. Quando não cabe, há truncamento didático no exemplo.
+O RSA só encripta um inteiro menor que `n` por vez. Para mensagens maiores, o lab divide o texto em **blocos**:
 
-No mundo real, usa-se criptografia híbrida:
+```text
+"Mensagem grande demais"        (22 bytes)
+        │
+        ▼
+Texto em bytes UTF-8            [4d 65 6e 73 61 67 65 6d ...]
+        │
+        ▼
+Divide em blocos de B bytes     B = (bits de n - 1) / 8
+        │                       (garante que cada bloco < n)
+        ▼
+Bloco 1: [4d 65 6e 73 61 67 65]  → inteiro → encrypt → cifrado₁
+Bloco 2: [6d 20 67 72 61 6e 64]  → inteiro → encrypt → cifrado₂
+Bloco 3: [65 20 64 65 6d 61 69]  → inteiro → encrypt → cifrado₃
+Bloco 4: [73]                     → inteiro → encrypt → cifrado₄
+        │
+        ▼
+Saída: cifrado₁, cifrado₂, cifrado₃, cifrado₄
+```
 
-1. RSA cifra uma chave simétrica curta.
-2. AES/ChaCha20 cifra os dados grandes.
+Na descriptografia, cada bloco cifrado é decifrado individualmente e os bytes são concatenados de volta.
 
-Isso evita limitações de tamanho e melhora desempenho.
+| Função          | Papel                                        |
+| --------------- | -------------------------------------------- |
+| `block_size`    | Calcula quantos bytes cabem em um bloco      |
+| `encrypt_text`  | Divide texto em blocos e encripta cada um    |
+| `decrypt_text`  | Decifra cada bloco e remonta o texto         |
+
+As funções primitivas `encrypt` e `decrypt` continuam operando sobre um único inteiro — as funções de bloco usam elas internamente.
 
 ### 4. Formato PEM (ASN.1/DER + Base64)
 
@@ -568,17 +692,35 @@ O SSH usa RSA para **autenticação** (provar quem você é), não para criptogr
 
 ```
 lab_rsa/
-├── rsa_lab.py     # Script com lógica e execução das etapas
-└── README.md      # Este arquivo
+├── rsa_core.py         # Núcleo reutilizável (matemática, RSA, PEM, parsing, fatoração)
+├── rsa_lab.py          # Orquestrador das 4 etapas didáticas
+├── rsa_cli.py          # CLI interativa com menus de seleção (requer venv)
+├── rsa_keygen.py       # CLI: geração de chaves
+├── rsa_encrypt.py      # CLI: criptografia com chave pública
+├── rsa_decrypt.py      # CLI: descriptografia com chave privada
+├── rsa_break.py        # CLI: quebra didática por fatoração
+├── requirements.txt    # Dependência da CLI interativa (simple-term-menu)
+└── README.md           # Este arquivo
 ```
 
-O script não usa nenhuma biblioteca externa de criptografia. Tudo é implementado do zero usando apenas:
+O núcleo criptográfico (`rsa_core.py`) e todos os CLIs individuais usam apenas a biblioteca padrão do Python 3. A CLI interativa (`rsa_cli.py`) é a única que depende de pacote externo (`simple-term-menu`, para menus com setinhas).
 
-- `math` — funções matemáticas básicas
+**Bibliotecas padrão usadas:**
+
+- `math` — funções matemáticas básicas (`isqrt`)
 - `secrets` — geração de números aleatórios criptograficamente seguros
 - `base64` — codificação Base64
 - `sys` — argumentos de linha de comando
 - `time` — medição de tempo do ataque
+- `ast` — parsing seguro de tuplas (`literal_eval`)
+- `os` — verificação de caminhos de arquivo
+- `argparse` — argumentos CLI do `rsa_keygen.py`, `rsa_encrypt.py` e `rsa_decrypt.py`
+- `datetime` — timestamp para nomes de arquivos PEM
+- `pathlib` — manipulação de caminhos multiplataforma
+
+**Dependência externa (apenas `rsa_cli.py`):**
+
+- `simple-term-menu` — menus interativos com navegação por setas no terminal
 
 ---
 
