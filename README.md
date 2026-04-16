@@ -6,6 +6,7 @@ Implementação do algoritmo RSA do zero, sem bibliotecas externas de criptograf
 
 - [O que é RSA?](#o-que-é-rsa)
 - [Como executar](#como-executar)
+- [CLI interativa](#cli-interativa)
 - [Execução individual por etapa (CLIs)](#execução-individual-por-etapa-clis)
 - [Mapa do código (funções, etapas e fluxos)](#mapa-do-código-funções-etapas-e-fluxos)
 - [Legenda das saídas do terminal](#legenda-das-saídas-do-terminal)
@@ -32,8 +33,13 @@ A segurança do RSA se baseia em um fato matemático:
 ## Como executar
 
 ```bash
-# Dependências: nenhuma! Usa apenas a biblioteca padrão do Python 3.
-# Não precisa de venv.
+# O lab e os CLIs usam apenas a biblioteca padrão do Python 3.
+# A CLI interativa (rsa_cli.py) precisa de venv com simple-term-menu.
+
+# Setup do venv (necessário apenas para rsa_cli.py)
+python3 -m venv .venv
+source .venv/bin/activate     # Linux/Mac
+pip install -r requirements.txt
 
 # Executa com 16 bits (padrão do lab)
 python3 rsa_lab.py
@@ -45,6 +51,46 @@ python3 rsa_lab.py 64     # Chave de 64 bits (a quebra pode levar minutos)
 python3 rsa_lab.py 512    # Chave de 512 bits (formato PEM realista)
 python3 rsa_lab.py 1024   # Chave de 1024 bits
 ```
+
+## CLI interativa
+
+Interface com menus de seleção (requer venv ativado):
+
+```bash
+source .venv/bin/activate
+python3 rsa_cli.py
+```
+
+```text
+========================================
+  RSA Lab - CLI Interativa
+========================================
+
+  O que deseja fazer?
+> Gerar chaves
+  Encriptar mensagem
+  Decriptar mensagem
+  Quebrar chave (fatoracao)
+  Exibir PEM
+  Status da sessao
+  Sair
+```
+
+Use as setas (cima/baixo) para navegar e Enter para selecionar. As chaves geradas ficam em memória durante a sessão.
+
+| Opção do menu             | Ação                                                        |
+| ------------------------- | ----------------------------------------------------------- |
+| Gerar chaves              | Escolhe tamanho (16-2048 bits) e gera par de chaves         |
+| Encriptar mensagem        | Pede texto e formato (didático ou raw Base64)               |
+| Decriptar mensagem        | Decripta último cifrado da sessão ou entrada manual         |
+| Quebrar chave (fatoração) | Tenta fatorar a chave pública (com aviso para chaves grandes)|
+| Exibir PEM                | Mostra chaves pública e privada em formato PEM              |
+| Status da sessão          | Resumo da chave ativa e último cifrado                      |
+| Sair                      | Encerra a CLI                                               |
+
+A CLI interativa depende de `simple-term-menu` (instalado via `requirements.txt`). Os demais scripts funcionam sem dependências externas.
+
+---
 
 ## Execução individual por etapa (CLIs)
 
@@ -646,16 +692,20 @@ O SSH usa RSA para **autenticação** (provar quem você é), não para criptogr
 
 ```
 lab_rsa/
-├── rsa_core.py       # Núcleo reutilizável (matemática, RSA, PEM, parsing, fatoração)
-├── rsa_lab.py        # Orquestrador das 4 etapas didáticas
-├── rsa_keygen.py     # CLI: geração de chaves
-├── rsa_encrypt.py    # CLI: criptografia com chave pública
-├── rsa_decrypt.py    # CLI: descriptografia com chave privada
-├── rsa_break.py      # CLI: quebra didática por fatoração
-└── README.md         # Este arquivo
+├── rsa_core.py         # Núcleo reutilizável (matemática, RSA, PEM, parsing, fatoração)
+├── rsa_lab.py          # Orquestrador das 4 etapas didáticas
+├── rsa_cli.py          # CLI interativa com menus de seleção (requer venv)
+├── rsa_keygen.py       # CLI: geração de chaves
+├── rsa_encrypt.py      # CLI: criptografia com chave pública
+├── rsa_decrypt.py      # CLI: descriptografia com chave privada
+├── rsa_break.py        # CLI: quebra didática por fatoração
+├── requirements.txt    # Dependência da CLI interativa (simple-term-menu)
+└── README.md           # Este arquivo
 ```
 
-O projeto não usa nenhuma biblioteca externa de criptografia. Tudo é implementado do zero usando apenas:
+O núcleo criptográfico (`rsa_core.py`) e todos os CLIs individuais usam apenas a biblioteca padrão do Python 3. A CLI interativa (`rsa_cli.py`) é a única que depende de pacote externo (`simple-term-menu`, para menus com setinhas).
+
+**Bibliotecas padrão usadas:**
 
 - `math` — funções matemáticas básicas (`isqrt`)
 - `secrets` — geração de números aleatórios criptograficamente seguros
@@ -664,9 +714,13 @@ O projeto não usa nenhuma biblioteca externa de criptografia. Tudo é implement
 - `time` — medição de tempo do ataque
 - `ast` — parsing seguro de tuplas (`literal_eval`)
 - `os` — verificação de caminhos de arquivo
-- `argparse` — argumentos CLI do `rsa_keygen.py`
+- `argparse` — argumentos CLI do `rsa_keygen.py`, `rsa_encrypt.py` e `rsa_decrypt.py`
 - `datetime` — timestamp para nomes de arquivos PEM
 - `pathlib` — manipulação de caminhos multiplataforma
+
+**Dependência externa (apenas `rsa_cli.py`):**
+
+- `simple-term-menu` — menus interativos com navegação por setas no terminal
 
 ---
 
