@@ -153,6 +153,26 @@ def decrypt_text(blocks, private_key):
     return b"".join(parts).decode("utf-8")
 
 
+def cipher_block_size(public_key):
+    _, n = public_key
+    return (n.bit_length() + 7) // 8
+
+
+def blocks_to_raw(blocks, public_key):
+    size = cipher_block_size(public_key)
+    raw = b"".join(b.to_bytes(size, "big") for b in blocks)
+    return base64.b64encode(raw).decode("ascii")
+
+
+def raw_to_blocks(raw_b64, public_key):
+    size = cipher_block_size(public_key)
+    data = base64.b64decode(raw_b64)
+    return [
+        int.from_bytes(data[i : i + size], "big")
+        for i in range(0, len(data), size)
+    ]
+
+
 def encode_der_length(length):
     if length < 0x80:
         return bytes([length])

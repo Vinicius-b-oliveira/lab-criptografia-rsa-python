@@ -63,8 +63,14 @@ python3 rsa_keygen.py 64 --output both
 # 2) Criptografar com chave pública
 python3 rsa_encrypt.py '(65537, 123456789)' 'mensagem'
 
+# 2b) Criptografar em formato realista (Base64 binário)
+python3 rsa_encrypt.py --raw '(65537, 123456789)' 'mensagem longa'
+
 # 3) Descriptografar com chave privada
 python3 rsa_decrypt.py '(12345, 123456789)' '987654321'
+
+# 3b) Descriptografar a partir do formato raw
+python3 rsa_decrypt.py --raw private.pem 'PKsir4p7TEL...'
 
 # 4) Quebrar chave pública (didático)
 python3 rsa_break.py '(65537, 123456789)'
@@ -76,6 +82,11 @@ python3 rsa_break.py public.pem
 ```
 
 Observação: os CLIs aceitam chave em tupla, PEM literal (texto) ou caminho para arquivo `.pem`.
+
+Para o `rsa_encrypt.py` e `rsa_decrypt.py`:
+
+- Sem flag: saída/entrada didática (inteiros separados por vírgula).
+- `--raw`: saída/entrada realista (blocos binários de tamanho fixo concatenados e codificados em Base64). Visualmente se parece com dados criptografados reais.
 
 Para o `rsa_keygen.py`:
 
@@ -147,6 +158,9 @@ main
 | `block_size`              | `rsa_core.py` | Calcula bytes por bloco para uma chave       | Etapa 2 (blocos)                    |
 | `encrypt_text`            | `rsa_core.py` | Divide texto em blocos e encripta cada um    | Etapa 2 (blocos)                    |
 | `decrypt_text`            | `rsa_core.py` | Decifra blocos e remonta o texto             | Etapa 2 (blocos)                    |
+| `cipher_block_size`       | `rsa_core.py` | Tamanho fixo do bloco cifrado (bytes de `n`) | Etapa 2 (serialização raw)          |
+| `blocks_to_raw`           | `rsa_core.py` | Serializa blocos cifrados em Base64 binário  | Etapa 2 (serialização raw)          |
+| `raw_to_blocks`           | `rsa_core.py` | Deserializa Base64 de volta para blocos      | Etapa 2 (serialização raw)          |
 | `encode_der_length`       | `rsa_core.py` | Codifica campo Length no DER                 | Etapa 3 (escrita PEM)               |
 | `int_to_der`              | `rsa_core.py` | Codifica INTEGER em DER                      | Etapa 3 (escrita PEM)               |
 | `der_sequence`            | `rsa_core.py` | Empacota conteúdo como SEQUENCE DER          | Etapa 3 (escrita PEM)               |
