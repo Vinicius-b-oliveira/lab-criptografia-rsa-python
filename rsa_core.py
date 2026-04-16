@@ -7,6 +7,8 @@ import math
 import os
 import secrets
 
+pasta_bruteforce = "brute_force/public_message.py"
+
 
 def gcd(a, b):
     while b:
@@ -99,11 +101,15 @@ def encrypt(message_int, public_key):
             f"Mensagem ({message_int}) deve ser menor que n ({n}). "
             "Use chave maior ou divida em blocos."
         )
+    with open(pasta_bruteforce, "w") as arquivo:
+        arquivo.write(f"class public_message:\n\tpublic_key = {public_key}")
     return pow(message_int, e, n)
 
 
 def decrypt(ciphertext, private_key):
     d, n = private_key[0], private_key[1]
+    with open(pasta_bruteforce, "a") as arquivo:
+        arquivo.write(f"\n\tencrypted_message = {ciphertext}")
     return pow(ciphertext, d, n)
 
 
@@ -188,8 +194,10 @@ def factorize(n):
         return 2, n // 2, 1
 
     limit = math.isqrt(n) + 1
+    if limit % 2 == 0:
+        limit -= 1
     attempts = 0
-    for i in range(3, limit, 2):
+    for i in range(limit, 3, -2):
         attempts += 1
         if n % i == 0:
             return i, n // i, attempts
@@ -344,3 +352,4 @@ def parse_private_key_input(key_input):
     if "BEGIN RSA PRIVATE KEY" in text:
         return parse_private_key_pem(text)
     return parse_private_key(text)
+
