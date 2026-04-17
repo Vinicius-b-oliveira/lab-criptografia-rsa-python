@@ -8,8 +8,6 @@ import sys
 
 from rsa_core import generate_keys, private_key_to_pem, public_key_to_pem
 
-pasta_bruteforce = "brute_force/public_message.py"
-
 def build_parser():
     parser = argparse.ArgumentParser(
         description="Gera chaves RSA em tupla e/ou PEM.",
@@ -56,8 +54,6 @@ def main():
         total_bits = 8
 
     public_key, private_key = generate_keys(total_bits // 2)
-    with open(pasta_bruteforce, "w") as arquivo:
-        arquivo.write(f"class public_message:\n\tpublic_key = {public_key}\n\tencrypted_message = ''")
     public_pem = public_key_to_pem(public_key)
     private_pem = private_key_to_pem(private_key)
 

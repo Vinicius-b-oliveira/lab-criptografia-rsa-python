@@ -7,8 +7,6 @@ import math
 import os
 import secrets
 
-pasta_bruteforce = "brute_force/public_message.py"
-
 
 def gcd(a, b):
     while b:
@@ -101,15 +99,11 @@ def encrypt(message_int, public_key):
             f"Mensagem ({message_int}) deve ser menor que n ({n}). "
             "Use chave maior ou divida em blocos."
         )
-    with open(pasta_bruteforce, "w") as arquivo:
-        arquivo.write(f"class public_message:\n\tpublic_key = {public_key}")
     return pow(message_int, e, n)
 
 
 def decrypt(ciphertext, private_key):
     d, n = private_key[0], private_key[1]
-    with open(pasta_bruteforce, "a") as arquivo:
-        arquivo.write(f"\n\tencrypted_message = {ciphertext}")
     return pow(ciphertext, d, n)
 
 
