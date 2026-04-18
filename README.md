@@ -138,7 +138,7 @@ Observação: os CLIs aceitam chave em tupla, PEM literal (texto) ou caminho par
 Para o `rsa_encrypt.py` e `rsa_decrypt.py`:
 
 - Sem flag: saída/entrada didática (inteiros separados por vírgula).
-- `--raw`: saída/entrada realista (blocos binários de tamanho fixo concatenados e codificados em Base64). Visualmente se parece com dados criptografados reais.
+- `--raw`: saída/entrada em blocos binários de tamanho fixo concatenados e codificados em Base64. **Apenas cosmético** — o algoritmo por baixo continua sendo o RSA acadêmico do lab; só a representação visual muda para lembrar um payload real. Ver a seção "O modo `--raw` é só cosmético" mais abaixo.
 
 Para o `rsa_keygen.py`:
 
@@ -559,6 +559,60 @@ Na descriptografia, cada bloco cifrado é decifrado individualmente e os bytes s
 | `decrypt_text` | Decifra cada bloco e remonta o texto      |
 
 As funções primitivas `encrypt` e `decrypt` continuam operando sobre um único inteiro — as funções de bloco usam elas internamente.
+
+#### Modelo acadêmico vs. RSA real (importante)
+
+A cifragem por blocos que o lab implementa é **didática**, não o que o mundo real usa. Entender a diferença é fundamental.
+
+**O que o lab faz:**
+
+1. Divide o texto em blocos de `(bits de n − 1) / 8` bytes.
+2. Cada bloco vira um inteiro e é passado direto para `m^e mod n`.
+3. Sem padding, sem aleatoriedade, sem autenticação.
+4. Equivale ao modo ECB de cifras simétricas aplicado a RSA — mesmo texto sempre gera o mesmo cifrado.
+
+**Por que isso é inseguro na vida real:**
+
+| Problema                     | Consequência                                                               |
+| ---------------------------- | -------------------------------------------------------------------------- |
+| **Determinismo**             | Mesma mensagem → mesmo cifrado. Dá pra "catalogar" cifrados conhecidos.    |
+| **Mensagens pequenas**       | Se `m < n^(1/e)`, basta tirar a raiz e-ésima — sem inverter RSA.           |
+| **Maleabilidade**            | `c₁ * c₂ mod n` decripta para `m₁ * m₂`. Atacante manipula sem a chave.    |
+| **Blocos independentes**     | Dá pra reordenar, remover ou reusar blocos — sem integridade.              |
+| **Sem autenticação**         | Qualquer um com a chave pública pode forjar cifrados.                      |
+
+**Como RSA é usado de verdade:**
+
+1. **Padding OAEP (RSAES-OAEP, PKCS#1 v2.x)**: antes de cifrar, a mensagem é embaralhada com uma função aleatória + hash. Isso mata o determinismo e fecha os ataques acima. Cada cifragem é única mesmo pro mesmo texto.
+2. **Criptografia híbrida (o caso mais comum)**: RSA quase nunca cifra os dados. O padrão real é:
+   ```
+   Alice quer mandar um arquivo pra Bob:
+     1. Alice gera uma chave AES aleatória (256 bits)
+     2. Alice cifra o arquivo com AES (rápido, cifra gigabytes)
+     3. Alice cifra só a chave AES com RSA-OAEP da Bob (1 operação, 256 bits)
+     4. Envia: [AES(arquivo) || RSA(chave_AES)]
+   ```
+   RSA cifra apenas uma chave pequena; AES faz o trabalho pesado.
+3. **TLS moderno (HTTPS)**: nem usa mais RSA pra cifrar. Usa **ECDHE** (Diffie-Hellman efêmero em curvas elípticas) pra trocar chaves, e RSA só como **assinatura** do certificado — provando a identidade do servidor, não protegendo os dados.
+
+**Onde nosso lab "trapaceia":** cifra o texto inteiro com RSA direto, bloco por bloco, sem padding. Funciona para demonstrar a matemática, mas **nenhum sistema real faz isso**.
+
+#### O modo `--raw` é só cosmético
+
+Os CLIs `rsa_encrypt.py` e `rsa_decrypt.py` aceitam a flag `--raw`. É tentador achar que ela "deixa realista", mas **não muda a criptografia** — só muda a representação do cifrado na tela.
+
+| Modo           | O que sai no terminal                  | Algoritmo por baixo          |
+| -------------- | -------------------------------------- | ---------------------------- |
+| Padrão         | Lista de inteiros separados por vírgula | Mesmo RSA acadêmico por blocos |
+| `--raw`        | String Base64 que parece "lixo binário" | Mesmo RSA acadêmico por blocos |
+
+O que `--raw` faz tecnicamente ([rsa_core.py:156-173](rsa_core.py#L156-L173)):
+
+1. Cada bloco cifrado é serializado em bytes de **tamanho fixo** (`cipher_block_size`, igual em bytes ao `n`).
+2. Os bytes de todos os blocos são concatenados.
+3. O resultado é codificado em Base64.
+
+É o mesmo empacotamento que TLS/SSH usam para cifrados reais — por isso **visualmente** o output lembra um payload real. Mas o conteúdo continua sendo o RSA acadêmico do lab, só embrulhado diferente. Serve para ilustrar "como dados criptografados *aparecem* em sistemas reais", não "como são gerados em sistemas reais".
 
 ### 4. Formato PEM (ASN.1/DER + Base64)
 
