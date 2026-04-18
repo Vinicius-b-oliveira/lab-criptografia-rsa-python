@@ -9,13 +9,6 @@ import time
 from rsa_core import parse_public_key_input
 
 
-def gcd(a, b):
-    """Calcula o MDC usando Euclides."""
-    while b:
-        a, b = b, a % b
-        return a
-
-
 def extended_gcd(a, b):
     """Retorna (g, x, y) tal que ax + by = g = gcd(a, b)."""
 

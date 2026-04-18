@@ -108,23 +108,23 @@ python3 rsa_keygen.py 64 --output file
 # 1c) Gerar e mostrar no terminal + salvar em arquivo
 python3 rsa_keygen.py 64 --output both
 
-# 2) Criptografar com chave pública
-python3 rsa_encrypt.py '(65537, 123456789)' 'mensagem'
+# 2) Criptografar com chave pública (p=61, q=53 → n=3233, e=17)
+python3 rsa_encrypt.py '(17, 3233)' 'mensagem'
 
 # 2b) Criptografar em formato realista (Base64 binário)
-python3 rsa_encrypt.py --raw '(65537, 123456789)' 'mensagem longa'
+python3 rsa_encrypt.py --raw '(17, 3233)' 'mensagem longa'
 
-# 3) Descriptografar com chave privada
-python3 rsa_decrypt.py '(12345, 123456789)' '987654321'
+# 3) Descriptografar com chave privada (d=2753 para o par acima)
+python3 rsa_decrypt.py '(2753, 3233)' '987654321'
 
 # 3b) Descriptografar a partir do formato raw
 python3 rsa_decrypt.py --raw private.pem 'PKsir4p7TEL...'
 
 # 4) Quebrar chave pública (didático)
-python3 rsa_break.py '(65537, 123456789)'
+python3 rsa_break.py '(17, 3233)'
 
 # 4b) Quebrar chave pública (performance, Pollard Rho)
-python3 brute_force.py '(65537, 123456789)'
+python3 brute_force.py '(17, 3233)'
 
 # Também aceita PEM por arquivo
 python3 rsa_encrypt.py public.pem 'mensagem'
@@ -667,6 +667,56 @@ O cenário do ataque:
 | 2048 bits        | ~10^308        | Impossível                       |
 
 Observação: o tempo real depende de CPU, linguagem, implementação e carga da máquina no momento do teste.
+
+#### Dois scripts de ataque: divisão por tentativa vs. Pollard Rho
+
+O lab oferece **duas implementações** do ataque, com a mesma finalidade mas complexidades radicalmente diferentes:
+
+| Aspecto         | [rsa_break.py](rsa_break.py)                       | [brute_force.py](brute_force.py)                       |
+| --------------- | -------------------------------------------------- | ------------------------------------------------------ |
+| Algoritmo       | Divisão por tentativa                              | Pollard Rho (ciclo de Floyd)                           |
+| Complexidade    | **O(√n)**                                          | **O(n^(1/4))**                                         |
+| Estratégia      | Testa todo ímpar entre √n e 3                      | Colisões pseudoaleatórias via `x = x² + c mod n`       |
+| Finalidade      | Didática — a "ideia óbvia" do ataque               | Performance — usado na CLI interativa                  |
+| Onde é chamado  | `rsa_break.py`, `rsa_lab.py` (etapa 4), `rsa_cli.py` (opção "fatoração") | `brute_force.py`, `rsa_cli.py` (opção "performance") |
+
+**Por que Pollard Rho é tão mais rápido?**
+
+Em vez de caçar o fator direto (√n iterações), ele explora o **paradoxo do aniversário**: gera uma sequência pseudoaleatória e aguarda uma colisão módulo `p`, que aparece em ~n^(1/4) passos. Quando a colisão acontece, `gcd(|x−y|, n)` delata o fator. Não é que o algoritmo "acha" `p` — ele esbarra numa coincidência que revela `p`.
+
+**Impacto prático em single-thread:**
+
+| Tamanho de n | Divisão por tentativa | Pollard Rho        |
+| ------------ | --------------------- | ------------------ |
+| 32 bits      | Instantâneo           | Instantâneo        |
+| 64 bits      | ~minutos              | Milissegundos      |
+| 96 bits      | Horas                 | ~1 segundo         |
+| 128 bits     | Séculos               | Minutos            |
+| 200 bits     | Inviável              | Começa a pesar     |
+
+Ou seja: a barreira prática do lab sobe de ~64 bits para ~128–160 bits apenas trocando o algoritmo — sem paralelismo e sem dependência externa.
+
+#### Até onde daria pra ir (escolhas que o lab não fez)
+
+O projeto é propositalmente restrito à biblioteca padrão do Python. Se relaxássemos essa restrição, os próximos saltos seriam:
+
+**Otimizações sem sair da stdlib** (poderiam ser feitas no próprio `brute_force.py`):
+
+- **Brent** no lugar de Floyd: ~25% menos iterações no ciclo.
+- **GCD em lote**: acumular o produto por ~100 passos antes de chamar `math.gcd` — o `gcd` é o custo dominante por iteração.
+- **Pollard p−1** como pré-passo: se `p−1` for smooth (produto de primos pequenos), quebra em milissegundos.
+- **Paralelismo com `multiprocessing`**: Rho paraleliza quase linearmente (cada worker com um `c` diferente). Limitar com `cpu_count() - 2` + `os.nice(10)` evita explodir o PC.
+
+**Com libs externas** (fora do escopo do lab):
+
+| Lib / Ferramenta             | Ganho                                                           |
+| ---------------------------- | --------------------------------------------------------------- |
+| `gmpy2`                      | Big int 5–10× mais rápido — acelera chaves E ataque             |
+| `sympy.ntheory.factorint`    | ECM + Rho + Pollard p−1 combinados — 128 bits em segundos       |
+| **ECM** (dedicado)           | Imbatível até ~60 dígitos — próximo salto algorítmico sobre Rho |
+| **msieve / YAFU / CADO-NFS** | QS e GNFS — padrão industrial, único caminho para 512+ bits     |
+
+**O que não muda:** 1024 bits segue inviável sem cluster; 2048 bits, sem computação quântica. A segurança prática do RSA não depende da escolha da stack de ataque — depende do tamanho da chave.
 
 ---
 
