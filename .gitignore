@@ -3,6 +3,8 @@ next_steps.md
 __pycache__/
 *.py[cod]
 
-keys/
+/brute_force/__pycache__
+/brute_force/public_message
 
+keys/
 .venv/

@@ -244,8 +244,10 @@ def factorize(n):
         return 2, n // 2, 1
 
     limit = math.isqrt(n) + 1
+    if limit % 2 == 0:
+        limit -= 1
     attempts = 0
-    for i in range(3, limit, 2):
+    for i in range(limit, 3, -2):
         attempts += 1
         if n % i == 0:
             return i, n // i, attempts
@@ -400,3 +402,4 @@ def parse_private_key_input(key_input):
     if "BEGIN RSA PRIVATE KEY" in text:
         return parse_private_key_pem(text)
     return parse_private_key(text)
+

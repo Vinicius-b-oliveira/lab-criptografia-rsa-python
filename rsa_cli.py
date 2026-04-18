@@ -5,6 +5,8 @@ import time
 
 from simple_term_menu import TerminalMenu
 
+from brute_force import break_key as break_key_fast
+
 from rsa_core import (
     block_size,
     blocks_to_raw,
@@ -226,6 +228,28 @@ def action_break():
     pause()
 
 
+def action_break_fast():
+    if not require_keys():
+        pause()
+        return
+
+    _, n = state["public_key"]
+    print(f"\n  alvo n ...............: {n} ({n.bit_length()} bits)")
+    print("  Fatorando (Pollard Rho)...")
+
+    recovered_key, attempts, elapsed = break_key_fast(state["public_key"])
+
+    print(f"  fatores ..............: p={recovered_key[2]}, q={recovered_key[3]}")
+    print(f"  tentativas ...........: {attempts}")
+    print(f"  tempo ................: {elapsed:.6f} s")
+    print(f"  d recuperado .........: {recovered_key[0]}")
+    print(
+        "  status ...............: ",
+        "OK" if recovered_key[0] == state["private_key"][0] else "FALHA",
+    )
+    pause()
+
+
 def action_pem():
     if not require_keys():
         pause()
@@ -254,6 +278,7 @@ MENU_OPTIONS = [
     "Encriptar mensagem",
     "Decriptar mensagem",
     "Quebrar chave (fatoracao)",
+    "Quebrar chave (performance)",
     "Exibir PEM",
     "Status da sessao",
     "Sair",
@@ -264,6 +289,7 @@ ACTIONS = [
     action_encrypt,
     action_decrypt,
     action_break,
+    action_break_fast,
     action_pem,
     action_status,
 ]

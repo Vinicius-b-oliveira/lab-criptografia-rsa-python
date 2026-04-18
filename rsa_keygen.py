@@ -8,7 +8,6 @@ import sys
 
 from rsa_core import generate_keys, private_key_to_pem, public_key_to_pem
 
-
 def build_parser():
     parser = argparse.ArgumentParser(
         description="Gera chaves RSA em tupla e/ou PEM.",

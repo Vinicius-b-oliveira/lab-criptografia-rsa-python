@@ -71,6 +71,7 @@ python3 rsa_cli.py
   Encriptar mensagem
   Decriptar mensagem
   Quebrar chave (fatoracao)
+  Quebrar chave (performance)
   Exibir PEM
   Status da sessao
   Sair
@@ -78,15 +79,16 @@ python3 rsa_cli.py
 
 Use as setas (cima/baixo) para navegar e Enter para selecionar. As chaves geradas ficam em memória durante a sessão.
 
-| Opção do menu             | Ação                                                        |
-| ------------------------- | ----------------------------------------------------------- |
-| Gerar chaves              | Escolhe tamanho (16-2048 bits) e gera par de chaves         |
-| Encriptar mensagem        | Pede texto e formato (didático ou raw Base64)               |
-| Decriptar mensagem        | Decripta último cifrado da sessão ou entrada manual         |
-| Quebrar chave (fatoração) | Tenta fatorar a chave pública (com aviso para chaves grandes)|
-| Exibir PEM                | Mostra chaves pública e privada em formato PEM              |
-| Status da sessão          | Resumo da chave ativa e último cifrado                      |
-| Sair                      | Encerra a CLI                                               |
+| Opção do menu               | Ação                                                                           |
+| --------------------------- | ------------------------------------------------------------------------------ |
+| Gerar chaves                | Escolhe tamanho (16-2048 bits) e gera par de chaves                            |
+| Encriptar mensagem          | Pede texto e formato (didático ou raw Base64)                                  |
+| Decriptar mensagem          | Decripta último cifrado da sessão ou entrada manual                            |
+| Quebrar chave (fatoração)   | Tenta fatorar a chave pública (com aviso para chaves grandes)                  |
+| Quebrar chave (performance) | Quebra a chave pública via Pollard Rho (mais rápido em chaves pequenas/médias) |
+| Exibir PEM                  | Mostra chaves pública e privada em formato PEM                                 |
+| Status da sessão            | Resumo da chave ativa e último cifrado                                         |
+| Sair                        | Encerra a CLI                                                                  |
 
 A CLI interativa depende de `simple-term-menu` (instalado via `requirements.txt`). Os demais scripts funcionam sem dependências externas.
 
@@ -121,10 +123,14 @@ python3 rsa_decrypt.py --raw private.pem 'PKsir4p7TEL...'
 # 4) Quebrar chave pública (didático)
 python3 rsa_break.py '(65537, 123456789)'
 
+# 4b) Quebrar chave pública (performance, Pollard Rho)
+python3 brute_force.py '(65537, 123456789)'
+
 # Também aceita PEM por arquivo
 python3 rsa_encrypt.py public.pem 'mensagem'
 python3 rsa_decrypt.py private.pem '987654321'
 python3 rsa_break.py public.pem
+python3 brute_force.py public.pem
 ```
 
 Observação: os CLIs aceitam chave em tupla, PEM literal (texto) ou caminho para arquivo `.pem`.
@@ -147,6 +153,7 @@ Arquivos da versão modular:
 - [rsa_encrypt.py](rsa_encrypt.py): criptografia.
 - [rsa_decrypt.py](rsa_decrypt.py): descriptografia.
 - [rsa_break.py](rsa_break.py): ataque por fatoração.
+- [brute_force.py](brute_force.py): ataque por fatoração focado em performance (Pollard Rho).
 
 ---
 
@@ -245,12 +252,14 @@ main
 **Etapa 2 (Criptografia/Descriptografia)**
 
 Etapa 2a (1 bloco — criptografia clássica):
+
 1. `demo_encryption` converte mensagem curta com `text_to_int`.
 2. Chama `encrypt` com chave pública.
 3. Chama `decrypt` com chave privada.
 4. Reconverte com `int_to_text` e compara resultado.
 
 Etapa 2b (N blocos — mensagem maior que `n`):
+
 1. `demo_encryption` chama `encrypt_text` com mensagem longa.
 2. `encrypt_text` divide o texto em blocos de `block_size` bytes.
 3. Cada bloco é convertido para inteiro e encriptado individualmente.
@@ -543,11 +552,11 @@ Saída: cifrado₁, cifrado₂, cifrado₃, cifrado₄
 
 Na descriptografia, cada bloco cifrado é decifrado individualmente e os bytes são concatenados de volta.
 
-| Função          | Papel                                        |
-| --------------- | -------------------------------------------- |
-| `block_size`    | Calcula quantos bytes cabem em um bloco      |
-| `encrypt_text`  | Divide texto em blocos e encripta cada um    |
-| `decrypt_text`  | Decifra cada bloco e remonta o texto         |
+| Função         | Papel                                     |
+| -------------- | ----------------------------------------- |
+| `block_size`   | Calcula quantos bytes cabem em um bloco   |
+| `encrypt_text` | Divide texto em blocos e encripta cada um |
+| `decrypt_text` | Decifra cada bloco e remonta o texto      |
 
 As funções primitivas `encrypt` e `decrypt` continuam operando sobre um único inteiro — as funções de bloco usam elas internamente.
 
@@ -699,6 +708,7 @@ lab_rsa/
 ├── rsa_encrypt.py      # CLI: criptografia com chave pública
 ├── rsa_decrypt.py      # CLI: descriptografia com chave privada
 ├── rsa_break.py        # CLI: quebra didática por fatoração
+├── brute_force.py      # CLI: quebra por performance (Pollard Rho)
 ├── requirements.txt    # Dependência da CLI interativa (simple-term-menu)
 └── README.md           # Este arquivo
 ```
